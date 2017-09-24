@@ -1,4 +1,5 @@
 <RCC>
-    <qresource prefix="SensorControl">
-    </qresource>
+  <qresource prefix="SensorControl">
+    <file>camera2_16.png</file>
+  </qresource>
 </RCC>

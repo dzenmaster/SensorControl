@@ -39,6 +39,11 @@ int main(int argc, char *argv[])
 	LOGPath = g_basePath +"LOG\\";
 
 	QApplication a(argc, argv);
+
+	if(isRunning) {
+		QMessageBox::critical(0,"", "re-run Sensor Control");
+		return 0;
+	}
 	SensorControl w;
 	w.show();
 	return a.exec();
