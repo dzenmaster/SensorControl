@@ -82,21 +82,21 @@ private:
 	int m_frameCnt;
 	QTimer* m_timer;
 
-/*	bool openPort(int aNum);
+	bool openPort(int aNum);
 	void closePort();
 	int waitForPacket(int& tt, int& aCode);
 	QByteArray hexStringToByteArray(QString& aStr);
 	void fillDeviceList();
-	int sendPacket(unsigned char aType, quint16 aLen, unsigned char aRdWr,quint16 aAddr, quint32 aData = 0);*/
+	int sendPacket(unsigned char aType, quint16 aLen, unsigned char aRdWr,quint16 aAddr, quint32 aData = 0);
 	bool setRbfFileName(const QString&);
-/*	void toLog(const QString& logStr);*/
+//	void toLog(const QString& logStr);
 	void setDebugMode(bool);
 
 private slots:
 	void updateFramesList();
 	void slShowTerminal(bool);
 
-/*	void slSend();
+	void slSend();
 	void addDataToTE(const QString& str);
 	void slOpen();
 	void slClose();
@@ -124,25 +124,19 @@ private slots:
 	void slClearFrameFolder();
 	void slOpenFolder();
 
-	void slNewImageState(const QString&, const QString&, const QString&, const QString&);*/
+	void slNewImageState(const QString&, const QString&, const QString&, const QString&);
 
 	void slDebugMode(bool);
 	void onPassword();
-/*	bool onReadTemperature();
+	bool onReadTemperature();
 	bool onReadReg();
 	bool onWriteReg();
 	void onTimerEvent();
-	bool onShutter();
-	bool onChangeAutoClb(bool);
-	bool onChangePeriod(int);
-	bool onInversion(bool);
 
-	bool newHiDiap(int);
-	bool newLowDiap(int);
 
 signals:
 	void newRAWFrame(const QString&);
-	void sigUpdateList();*/
+	void sigUpdateList();
 };
 
 #endif // SENSORCONTROL_H
