@@ -92,6 +92,10 @@ SensorControl::SensorControl(QWidget *parent)
 	setDebugMode(tDebugMode);
 	ui.cbDebugMode->setChecked(tDebugMode);
 
+	if (g_Settings.contains("FPACfgData")){
+		ui.leFPACfgData->setText(g_Settings.value("FPACfgData").toString());
+	}
+
 	m_buff[0]=0xA5;
 	m_buff[1]=0x5A;
 	memset(&m_buff[2], 0, 2046);
@@ -134,6 +138,8 @@ SensorControl::SensorControl(QWidget *parent)
 	connect(ui.pbReadRg,SIGNAL(clicked()),SLOT(onReadReg()) );
 	connect(ui.pbWriteRg,SIGNAL(clicked()),SLOT(onWriteReg()) );
 	connect(m_timer,SIGNAL(timeout()),SLOT(onTimerEvent()) );
+
+	connect(ui.pbLoadFPACfgData,SIGNAL(clicked()),SLOT(onLoadFPACfgData()) );
 	
 	m_timer->start(1000);
 
@@ -1334,4 +1340,36 @@ void SensorControl::slWaitFrameFinished() // timeout in waiting frame
 	ui.wView->setEnabled(true);
 	QMessageBox::critical(this,"slWaitFrameFinished","Таймаут");	
 	m_mtx.unlock();
+}
+
+void SensorControl::onLoadFPACfgData()
+{	
+	QString strNum = ui.leFPACfgData->text();
+	//validate data
+	//H HHHH HHHH HHHH HHHH HHHH HHHH HHHH HHHH HHHH HHHH
+	int len = strNum.length();
+	if (len!=51){
+		QMessageBox::critical(this,"Ошибка","Некорректная длина числа");
+		return;
+	}
+
+//	for (int i=0; i<10; ++i) {
+//		if (strNum.at(1 + i*5)!=' '){
+//			QMessageBox::critical(this,"Ошибка","Некорректный формат числа");
+//			return;
+//		}
+//	}
+
+	QRegularExpression hexMatcher("^[0-9A-F]{1} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4} [0-9A-F]{4}$",
+		QRegularExpression::CaseInsensitiveOption);
+
+	QRegularExpressionMatch match = hexMatcher.match(strNum);
+	if (!match.hasMatch())
+	{
+		QMessageBox::critical(this,"Ошибка","Некорректный формат числа2");
+		return;
+	}
+	g_Settings.setValue("FPACfgData", strNum);
+	//можно загружать
+
 }

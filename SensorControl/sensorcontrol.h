@@ -133,6 +133,8 @@ private slots:
 	bool onWriteReg();
 	void onTimerEvent();
 
+	void onLoadFPACfgData();
+
 
 signals:
 	void newRAWFrame(const QString&);
