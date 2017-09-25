@@ -30,13 +30,13 @@ CJournal::CJournal(QWidget *parent)
 	}
 	connect(this,SIGNAL(newData(QString, QString, bool )),SLOT(safeAddMessage(QString, QString, bool)) );
 	m_mtx.unlock();
-	addMessage("", "Программа FTDI Device Control запущена"); 
+	addMessage("", "Программа Sensor Control запущена"); 
 	clearLogs();
 }
 
 CJournal::~CJournal()
 {
-	addMessage("", "Программа FTDI Device Control завершена"); 
+	addMessage("", "Программа Sensor Control завершена"); 
 }
 
 void CJournal::addMessage(const QString& a_module, const QString& a_text, bool isError)

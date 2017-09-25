@@ -67,6 +67,7 @@ SensorControl::SensorControl(QWidget *parent)
 
 	ui.wTerm->hide();
 	ui.wProgress->hide();
+	ui.teJournal->hide();
 
 	//version
 	unsigned short v1,v2,v3,v4;
@@ -77,7 +78,7 @@ SensorControl::SensorControl(QWidget *parent)
 	if (!QFile::exists(m_framesPath)) {
 		QDir td;
 		if (!td.mkpath(m_framesPath)) {
-		//	ui.teJournal->addMessage("Невозможно создать путь ",m_framesPath,1);		
+			ui.teJournal->addMessage("Невозможно создать путь ",m_framesPath,1);		
 		}
 	}
 	updateFramesList();
@@ -179,7 +180,7 @@ bool SensorControl::setRbfFileName(const QString& fn)
 		QFileInfo fi(m_fileName);
 		ui.lSize->setText(QString("Size %1").arg(fi.size()));
 		g_Settings.setValue("rbfFileName", m_fileName);
-	//	ui.teJournal->addMessage("setRbfFileName", m_fileName);
+		ui.teJournal->addMessage("setRbfFileName", m_fileName);
 		return true;
 	}
 	return false;
@@ -228,7 +229,7 @@ void SensorControl::fillDeviceList()
 	void * p1 = (void*)&numDevs;				
 	ftStatus = FT_ListDevices(p1, NULL, FT_LIST_NUMBER_ONLY);	
 	if ((ftStatus == FT_OK)&&(numDevs>0)) {
-	//	ui.teJournal->addMessage("fillDeviceList",QString("Найдено %1 устройств").arg(numDevs));
+		ui.teJournal->addMessage("fillDeviceList",QString("Найдено %1 устройств").arg(numDevs));
 		if (numDevs>9)
 			numDevs = 9;
 		char *BufPtrs[10];   // pointer to array of 10 pointers 
@@ -248,7 +249,7 @@ void SensorControl::fillDeviceList()
 			delete BufPtrs[i];
 	}
 	else {
-	//	ui.teJournal->addMessage("fillDeviceList","Не найдено устройств", 1);
+		ui.teJournal->addMessage("fillDeviceList","Не найдено устройств", 1);
 		QMessageBox::critical(this,"Нет устройств","Не найдено устройств");			
 	}
 }
@@ -267,7 +268,7 @@ void SensorControl::slSend()
 		DWORD ret;
 		ftStatus = FT_Write(m_handle, ba.data(), ba.size(), &ret);	
 		if (ftStatus!=FT_OK) {
-		//	ui.teJournal->addMessage("slSend", "FT_Write error", 1);
+			ui.teJournal->addMessage("slSend", "FT_Write error", 1);
 			QMessageBox::critical(this, "FT_Write error", "FT_Write error");			
 		}
 	}
@@ -308,30 +309,30 @@ bool SensorControl::openPort(int aNum)
 	FT_STATUS ftStatus = FT_OK;
 	ftStatus = FT_Open(aNum, &m_handle);
 	if (ftStatus!=FT_OK){
-	//	ui.teJournal->addMessage("openPort","Ошибка открытия порта", 1);
+		ui.teJournal->addMessage("openPort","Ошибка открытия порта", 1);
 		QMessageBox::critical(this, "FT_Open error", "FT_Open error");
 		return false;
 	}
 	ftStatus = FT_SetEventNotification(m_handle, FT_EVENT_RXCHAR, m_hEvent);
 	if (ftStatus!=FT_OK){
-	//	ui.teJournal->addMessage("openPort","FT_SetEventNotification ошибка", 1);
+		ui.teJournal->addMessage("openPort","FT_SetEventNotification ошибка", 1);
 		QMessageBox::critical(this, "FT_SetEventNotification ошибка", "FT_SetEventNotification ошибка");
 		return false;
 	}	
 	ftStatus = FT_SetBaudRate(m_handle, 115200);
 	//ftStatus = FT_SetBaudRate(m_handle, 57600);
 	if (ftStatus!=FT_OK){
-	//	ui.teJournal->addMessage("openPort","FT_SetBaudRate ошибка", 1);
+		ui.teJournal->addMessage("openPort","FT_SetBaudRate ошибка", 1);
 		QMessageBox::critical(this, "FT_SetBaudRate error", "FT_SetBaudRate ошибка");
 		return false;
 	}
 	ftStatus = FT_SetDataCharacteristics(m_handle, FT_BITS_8, FT_STOP_BITS_1, FT_PARITY_NONE);
 	if (ftStatus!=FT_OK) {
-	//	ui.teJournal->addMessage("openPort","FT_SetDataCharacteristics ошибка", 1);
+		ui.teJournal->addMessage("openPort","FT_SetDataCharacteristics ошибка", 1);
 		QMessageBox::critical(this, "FT_SetDataCharacteristics error", "FT_SetDataCharacteristics ошибка");
 		return false;
 	}
-	//ui.teJournal->addMessage("openPort","Порт успешно открыт");	
+	ui.teJournal->addMessage("openPort","Порт успешно открыт");	
 	m_waitingThread = new CWaitingThread(m_handle, m_hEvent);
 	connect(m_waitingThread,SIGNAL(newData(const QString& )), SLOT(addDataToTE(const QString& )));
 	connect(m_waitingThread,SIGNAL(newKadr(unsigned char, unsigned short, const unsigned char*)), SLOT(slNewKadr(unsigned char, unsigned short, const unsigned char*)));
@@ -353,7 +354,7 @@ void SensorControl::closePort()
 	if (m_handle) {
 		FT_STATUS ftStatus = FT_Close(m_handle);
 		if (ftStatus!=FT_OK) {
-			//ui.teJournal->addMessage("closePort", "FT_Close ошибка", 1);
+			ui.teJournal->addMessage("closePort", "FT_Close ошибка", 1);
 			QMessageBox::critical(this, "FT_Close error", "FT_Close ошибка");			
 		}
 		m_handle = NULL;
@@ -382,14 +383,14 @@ bool SensorControl::slWriteFlash()
 		return false;
 	}
 	if ((m_flashID<1)||(m_flashID==0xFFFF)) {  //(m_flashID!=0x16){
-	//	ui.teJournal->addMessage("slWriteFlash", QString("Неверный flash ID %1").arg(m_flashID), 1);
+		ui.teJournal->addMessage("slWriteFlash", QString("Неверный flash ID %1").arg(m_flashID), 1);
 		QMessageBox::critical(this, "wrong flash ID", "wrong flash ID");
 		m_mtx.unlock();
 		return false;	
 	}
 	QString fileName = ui.lePathToRBF->text();
 	if (!QFile::exists(fileName)) {
-	//	ui.teJournal->addMessage("slWriteFlash", QString("Файл %1 не существует").arg(fileName), 1);
+		ui.teJournal->addMessage("slWriteFlash", QString("Файл %1 не существует").arg(fileName), 1);
 		QMessageBox::critical(this, "Файл не существует", "no file");
 		m_mtx.unlock();
 		return false;	
@@ -405,7 +406,7 @@ bool SensorControl::slWriteFlash()
 
 	QFile f1(fileName);
 	if (!f1.open(QIODevice::ReadOnly))	{
-	//	ui.teJournal->addMessage("slWriteFlash", QString("Ошибка открытия файла %1").arg(fileName), 1);
+		ui.teJournal->addMessage("slWriteFlash", QString("Ошибка открытия файла %1").arg(fileName), 1);
 		QMessageBox::critical(this, "Ошибка открытия файла", "Ошибка открытия файла");
 		ui.wUpdate->setEnabled(true);
 		m_mtx.unlock();
@@ -421,10 +422,10 @@ bool SensorControl::slWriteFlash()
 	{
 		if (m_cancel){//pushed cancel
 			if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x00)!=0){  // stop write
-			//	ui.teJournal->addMessage("slWriteFlash", QString("Ошибка : ") + m_lastErrorStr, 1);					
+				ui.teJournal->addMessage("slWriteFlash", QString("Ошибка : ") + m_lastErrorStr, 1);					
 			}
 			else{
-			//	ui.teJournal->addMessage("slWriteFlash", "Остановлено",1);		
+				ui.teJournal->addMessage("slWriteFlash", "Остановлено",1);		
 			}
 			tSuccsess = false;
 			break;
@@ -440,20 +441,20 @@ bool SensorControl::slWriteFlash()
 		ftStatus = FT_Write(m_handle, buff, nWasRead+5, &ret);	
 		//Sleep(200);//костыль
 		if (ftStatus!=FT_OK) {
-		//	ui.teJournal->addMessage("slWriteFlash", "FT_Write error", 1);
+			ui.teJournal->addMessage("slWriteFlash", "FT_Write error", 1);
 			QMessageBox::critical(this, "FT_Write error", "FT_Write error");			
 		}
 		int tWTime=0;
 		int tCode=-1;
 		if (waitForPacket(tWTime, tCode)==1) {			
-		//	ui.teJournal->addMessage("slWriteFlash", "Таймаут ожидания", 1);
-		//	ui.teJournal->addMessage("slWriteFlash", QString("write error %1 len=%2 %3 %4\n").arg(tCode).arg(nWasRead).arg(ret).arg(wasRW), 1);
+			ui.teJournal->addMessage("slWriteFlash", "Таймаут ожидания", 1);
+			ui.teJournal->addMessage("slWriteFlash", QString("write error %1 len=%2 %3 %4\n").arg(tCode).arg(nWasRead).arg(ret).arg(wasRW), 1);
 			break;
 		}
 		else {
-			//ui.teJournal->addMessage("slWriteFlash", QString("good Wait %1ms len=%2 %3 %4\n").arg(tWTime).arg(nWasRead).arg(ret).arg(wasRW));		
+			ui.teJournal->addMessage("slWriteFlash", QString("good Wait %1ms len=%2 %3 %4\n").arg(tWTime).arg(nWasRead).arg(ret).arg(wasRW));		
 			if (tCode!=0){
-			//	ui.teJournal->addMessage("slWriteFlash", QString("write error %1\n").arg(tCode), 1);								
+				ui.teJournal->addMessage("slWriteFlash", QString("write error %1\n").arg(tCode), 1);								
 				break;
 			}
 		}		
@@ -471,7 +472,7 @@ bool SensorControl::slWriteFlash()
 	ui.progressBarRBF->setValue(100);
 	if (!tSuccsess)
 	{
-	//	ui.teJournal->addMessage("slWriteFlash", "Неудачная запись", 1);		
+		ui.teJournal->addMessage("slWriteFlash", "Неудачная запись", 1);		
 		ui.wUpdate->setEnabled(true);
 		QApplication::processEvents();	
 		m_mtx.unlock();
@@ -480,15 +481,15 @@ bool SensorControl::slWriteFlash()
 	
 	m_R3=1;
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 3)!=0)	{
-	//	ui.teJournal->addMessage("slWriteFlash", "Ошибка : " + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slWriteFlash", "Ошибка : " + m_lastErrorStr, 1);
 		ui.teReceive->append("error : " + m_lastErrorStr);	// Прочитать регистр -> addr=0x3 должно измениться значениe с 0x4 на 0х0 (NULL)	
 	}
 	Sleep(200);
 	if (m_R3==0){
-	//	ui.teJournal->addMessage("slWriteFlash", "Успешная запись");
+		ui.teJournal->addMessage("slWriteFlash", "Успешная запись");
 	}
 	else{
-	//	ui.teJournal->addMessage("slWriteFlash", "Неудачная запись R3!=0", 1);
+		ui.teJournal->addMessage("slWriteFlash", "Неудачная запись R3!=0", 1);
 	}
 	ui.wUpdate->setEnabled(true);
 	QApplication::processEvents();	
@@ -555,7 +556,7 @@ int SensorControl::sendPacket(unsigned char aType, quint16 aLen, unsigned char a
 	}
 	else {
 		ui.teReceive->append(QString("good Wait %1ms\n").arg(tWTime));	
-		//ui.teJournal->addMessage("slReadFlash", QString("error 3: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slReadFlash", QString("error 3: ") + m_lastErrorStr, 1);
 		if (typeToWait==PKG_TYPE_ERRORMES){
 			if (tCode!=0) {
 				m_lastErrorStr = QString("Код ошибки %1\n").arg(tCode);	
@@ -588,10 +589,10 @@ bool SensorControl::slReadFlashID()
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 0)!=0)	{
 		m_mtx.unlock();
-		//ui.teJournal->addMessage("slReadFlashID", QString("Ошибка : ") + m_lastErrorStr, 1);				
+		ui.teJournal->addMessage("slReadFlashID", QString("Ошибка : ") + m_lastErrorStr, 1);				
 		return false;
 	}
-	//ui.teJournal->addMessage("slReadFlashID", "Успешно ");
+	ui.teJournal->addMessage("slReadFlashID", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -603,11 +604,11 @@ bool SensorControl::slReadStartAddress()
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 4)!=0)	{
 		m_mtx.unlock();
-		//ui.teJournal->addMessage("slReadStartAddress", QString("Ошибка : ") + m_lastErrorStr, 1);				
+		ui.teJournal->addMessage("slReadStartAddress", QString("Ошибка : ") + m_lastErrorStr, 1);				
 		return false;
 	}
 	Sleep(200);
-	//ui.teJournal->addMessage("slReadStartAddress", "Успешно ");
+	ui.teJournal->addMessage("slReadStartAddress", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -655,11 +656,11 @@ bool SensorControl::slEraseFlash()
 			return false;
 		}
 		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x01, i* 0x40000 + m_startAddr)!=0)	{ //раньше 0x10000			
-			//ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
+			ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
 			break;
 		}		
 		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x03)!=0)	{			
-			//ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 3: ") + m_lastErrorStr, 1);
+			ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 3: ") + m_lastErrorStr, 1);
 			break;
 		}	
 		ui.progressBarRBF->setValue(i*100/12);
@@ -667,12 +668,12 @@ bool SensorControl::slEraseFlash()
 	}	
 	//back address
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x01, m_startAddr)!=0)	{	
-		//ui.teJournal->addMessage("slEraseFlash", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slEraseFlash", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
 		ui.wUpdate->setEnabled(true);
 		m_mtx.unlock();
 		return false;
 	}
-	//ui.teJournal->addMessage("slEraseFlash", "Успешно ");
+	ui.teJournal->addMessage("slEraseFlash", "Успешно ");
 	ui.wUpdate->setEnabled(true);
 	m_mtx.unlock();
 	return true;
@@ -683,11 +684,11 @@ bool SensorControl::slWriteCmdUpdateFirmware()
 	if (!m_mtx.tryLock())
 		return false;
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x04)!=0) { // 4. Записать в регистр команду Update Firmware 0x4  -> addr=0x3 (Дождаться пакета OK)		
-		//ui.teJournal->addMessage("slWriteCmdUpdateFirmware", QString("Ошибка : ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slWriteCmdUpdateFirmware", QString("Ошибка : ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
 	}
-//	ui.teJournal->addMessage("slWriteCmdUpdateFirmware", "Успешно ");
+	ui.teJournal->addMessage("slWriteCmdUpdateFirmware", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -703,13 +704,13 @@ bool SensorControl::slWriteLength()
 		QFileInfo fi(fileName);
 		sz = fi.size();
 	}
-	//ui.teJournal->addMessage("slWriteLength", QString("Длина файла %1").arg(sz));
+	ui.teJournal->addMessage("slWriteLength", QString("Длина файла %1").arg(sz));
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x02, sz)!=0)	{//Записать полную длину файла		
-		//ui.teJournal->addMessage("slWriteLength", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slWriteLength", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
 	}
-	//ui.teJournal->addMessage("slWriteLength", "Успешно ");
+	ui.teJournal->addMessage("slWriteLength", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -721,19 +722,19 @@ void SensorControl::slReadFlash()
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 4)!=0)	{
 		m_mtx.unlock();
-		//ui.teJournal->addMessage("slReadFlash", QString("ОШибка : ") + m_lastErrorStr, 1);		
+		ui.teJournal->addMessage("slReadFlash", QString("ОШибка : ") + m_lastErrorStr, 1);		
 		return;
 	}
 	Sleep(200);
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x01, m_startAddr)!=0) { // a5 5a 03 07 00 00 01 00 00 00 00 00 -- set start epcs addr 0		
-		//ui.teJournal->addMessage("slReadFlash", QString("Ошибка 1: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slReadFlash", QString("Ошибка 1: ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return;
 	}	
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 0x02)!=0)	{ // a5 5a 03 07 00 00 02 00 10 00 00 00 -- read length		
-		//ui.teJournal->addMessage("slReadFlash", QString("Ошибка 2: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slReadFlash", QString("Ошибка 2: ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return;
 	}
@@ -753,16 +754,16 @@ void SensorControl::slReadFlash()
 	m_inputFile = new QFile(tFileName);
 	if (!m_inputFile->open(QIODevice::WriteOnly)) {
 		m_inputFile = 0;	
-		//ui.teJournal->addMessage("slReadFlash", "Ошибка открытия", 1);
+		ui.teJournal->addMessage("slReadFlash", "Ошибка открытия", 1);
 		QApplication::processEvents();
 		m_mtx.unlock();
 		return;
 	}
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x05)!=0) { // start reading a5 5a 03 07 00 00 03 00 05 00 00 00 -- cmd read fw
-		//ui.teJournal->addMessage("slReadFlash", QString("Ошибка 3: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slReadFlash", QString("Ошибка 3: ") + m_lastErrorStr, 1);
 	}
-	//ui.teJournal->addMessage("slReadFlash", "Чтение началось ");	
+	ui.teJournal->addMessage("slReadFlash", "Чтение началось ");	
 	m_mtx.unlock();
 }
 
@@ -772,49 +773,49 @@ void SensorControl::slUpdateFirmware()
 	//	m_cutLength = -1;
 	if ( (m_fileName!=ui.lePathToRBF->text())||(!QFile::exists(m_fileName)) ) {
 		if (!slBrowseRBF()){
-			//ui.teJournal->addMessage("slUpdateFirmware", "Ошибка открытия RBF", 1);
+			ui.teJournal->addMessage("slUpdateFirmware", "Ошибка открытия RBF", 1);
 			QMessageBox::critical(0,"Open RBF error","Open RBF  error");
 			return;
 		}
 	}
 	ui.statusBar->showMessage("Read Flash ID");
 	if (!slReadFlashID()){	
-	//	ui.teJournal->addMessage("slUpdateFirmware", "ReadFlashID error", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "ReadFlashID error", 1);
 		QMessageBox::critical(0,"ReadFlashID error","ReadFlashID error");
 		return;
 	}
 	//cbFileType
 	ui.statusBar->showMessage("Read Start Address");
 	if (!slReadStartAddress()){	
-	//	ui.teJournal->addMessage("slUpdateFirmware", "Ошибка чтения стартового адреса", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "Ошибка чтения стартового адреса", 1);
 		QMessageBox::critical(0,"Read Start Address error","Read Start Address error");
 		return;
 	}
 	ui.statusBar->showMessage("Erase Flash");
 	if (!slEraseFlash()){
-	//	ui.teJournal->addMessage("slUpdateFirmware", "EraseFlash error", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "EraseFlash error", 1);
 		QMessageBox::critical(0,"EraseFlash error","EraseFlash error");
 		return;
 	}
 	ui.statusBar->showMessage("Write Length");
 	if (!slWriteLength()){	
-	//	ui.teJournal->addMessage("slUpdateFirmware", "WriteLength error", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "WriteLength error", 1);
 		QMessageBox::critical(0,"WriteLength error","WriteLength error");
 		return;
 	}
 	ui.statusBar->showMessage("Write Cmd Update Firmware");
 	if (!slWriteCmdUpdateFirmware()){
-	//	ui.teJournal->addMessage("slUpdateFirmware", "WriteCmdUpdateFirmware error", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "WriteCmdUpdateFirmware error", 1);
 		QMessageBox::critical(0,"WriteCmdUpdateFirmware error","WriteCmdUpdateFirmware error");
 		return;
 	}
 	ui.statusBar->showMessage("Write Flash Firmware");
 	if (!slWriteFlash()){	
-		//ui.teJournal->addMessage("slUpdateFirmware", "WriteFlash error", 1);
+		ui.teJournal->addMessage("slUpdateFirmware", "WriteFlash error", 1);
 		QMessageBox::critical(0,"WriteFlash error","WriteFlash error");
 		return;
 	}
-	//ui.teJournal->addMessage("slUpdateFirmware", "Обновлено успешно");
+	ui.teJournal->addMessage("slUpdateFirmware", "Обновлено успешно");
 	ui.statusBar->showMessage("Обновлено успешно");
 	QMessageBox::information(0, "Updated successful", "Обновлено успешно");
 }
@@ -825,17 +826,17 @@ bool SensorControl::slJumpToFact()
 		return false;
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x10, 0x00)!=0)	{		
-		//ui.teJournal->addMessage("slJumpToFact", QString("Ошибка 10 : ") + m_lastErrorStr,1);
+		ui.teJournal->addMessage("slJumpToFact", QString("Ошибка 10 : ") + m_lastErrorStr,1);
 		m_mtx.unlock();
 		return false;
 	}
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x11, 0x01)!=0)	{		
-		//ui.teJournal->addMessage("slJumpToFact", QString("Ошибка 11: ") + m_lastErrorStr,1);
+		ui.teJournal->addMessage("slJumpToFact", QString("Ошибка 11: ") + m_lastErrorStr,1);
 		m_mtx.unlock();
 		return false;
 	}
-//	ui.teJournal->addMessage("slJumpToFact", "Jump Appl Успешно ");
+	ui.teJournal->addMessage("slJumpToFact", "Jump Appl Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -847,23 +848,23 @@ bool SensorControl::slJumpToAppl()
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 4)!=0)	{
 		m_mtx.unlock();
-		//ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 4: ") + m_lastErrorStr,1);	
+		ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 4: ") + m_lastErrorStr,1);	
 		return false;
 	}
 	Sleep(200);
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x10, m_startAddr)!=0)	{
-		//ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 10: ") + m_lastErrorStr,1);		
+		ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 10: ") + m_lastErrorStr,1);		
 		m_mtx.unlock();
 		return false;
 	}
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x11, 0x01)!=0)	{
-		//ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 11: ") + m_lastErrorStr,1);		
+		ui.teJournal->addMessage("slJumpToAppl", QString("Ошибка 11: ") + m_lastErrorStr,1);		
 		m_mtx.unlock();
 		return false;
 	}
-	//ui.teJournal->addMessage("slJumpToAppl", "Jump Appl Успешно ");
+	ui.teJournal->addMessage("slJumpToAppl", "Jump Appl Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -928,7 +929,7 @@ void SensorControl::slViewRaw()
 	if (!m_inputFile->open(QIODevice::WriteOnly)) {
 		delete m_inputFile;
 		m_inputFile = 0;		
-	//	ui.teJournal->addMessage("slViewRaw", "Ошибка открытия файла", 1);
+		ui.teJournal->addMessage("slViewRaw", "Ошибка открытия файла", 1);
 		QApplication::processEvents();
 		m_mtx.unlock();
 		return;
@@ -945,18 +946,18 @@ void SensorControl::slViewRaw()
 	m_time.start();
 	m_gettingFile=true;
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x15, tImageMode+1)!=0) { 
-	//	ui.teJournal->addMessage("slReadRaw", QString("Ошибка 15: ") + m_lastErrorStr, 1);		
+		ui.teJournal->addMessage("slReadRaw", QString("Ошибка 15: ") + m_lastErrorStr, 1);		
 		m_mtx.unlock();
 		return;
 	}	
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x16, 0x01)!=0) { 
-	//	ui.teJournal->addMessage("slReadRaw", QString("ОШибка 16: ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("slReadRaw", QString("ОШибка 16: ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return;
 	}	
 
-//	ui.teJournal->addMessage("slReadRaw", "Чтение началось ");
+	ui.teJournal->addMessage("slReadRaw", "Чтение началось ");
 	ui.wView->setEnabled(false);
 	m_mtx.unlock();
 }
@@ -1018,16 +1019,16 @@ void SensorControl::slDrawPicture(const QString& fileName)
 	}
 
 	qint64 sz = fi.size();
-//	ui.teJournal->addMessage("slReadRaw", QString("Размер %1").arg(sz));
+	ui.teJournal->addMessage("slReadRaw", QString("Размер %1").arg(sz));
 
 	if (sz!=desireSize){
-	//	ui.teJournal->addMessage("slReadRaw", "Неверный размер",1);
+		ui.teJournal->addMessage("slReadRaw", "Неверный размер",1);
 		m_mtx.unlock();
 		return;
 	}
 	QFile f1(fileName);
 	if (!f1.open(QIODevice::ReadOnly)){
-	//	ui.teJournal->addMessage("slReadRaw", "Ошибка открытия",1);
+		ui.teJournal->addMessage("slReadRaw", "Ошибка открытия",1);
 		m_mtx.unlock();
 		return;
 	}
@@ -1055,14 +1056,14 @@ void SensorControl::slDrawPicture(const QString& fileName)
 		}
 	}
 	f1.close();
-//	ui.teJournal->addMessage("slReadRaw", "Чтение завершено");
+	ui.teJournal->addMessage("slReadRaw", "Чтение завершено");
 	ui.lView->setRawBuffer(tBuffer, tBuffer2, g_tw, g_th, QImage::Format_Indexed8);
 	delete[]  tBuffer;
 
 	m_gettingFile = false;	
 
 	int et = m_time.elapsed();
-//	ui.teJournal->addMessage("slReadRaw", QString("Время получения фрейма %1").arg(et));
+	ui.teJournal->addMessage("slReadRaw", QString("Время получения фрейма %1").arg(et));
 	m_mtx.unlock();
 }
 
@@ -1094,12 +1095,12 @@ bool SensorControl::onReadTemperature()
 
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 0x1A)!=0)	{
 		m_mtx.unlock();
-		//ui.teJournal->addMessage("slReadTemperature", QString("Ошибка : ") + m_lastErrorStr, 1);			
+		ui.teJournal->addMessage("slReadTemperature", QString("Ошибка : ") + m_lastErrorStr, 1);			
 		return false;
 	}
 	Sleep(200);
 	ui.leReadTemp->setText(QString("%1°").arg((m_temperature>>6)/4.0, 0, 'F', 2)); 
-	//ui.teJournal->addMessage("slReadTemperature", "Успешно ");
+	ui.teJournal->addMessage("slReadTemperature", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -1112,11 +1113,11 @@ bool SensorControl::onReadReg()
 	qint16 tAddr = tStr.toUShort(0,16);
 	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, tAddr)!=0)	{
 		m_mtx.unlock();
-	//	ui.teJournal->addMessage("Read Reg", QString("Ошибка : ") + m_lastErrorStr, 1);			
+		ui.teJournal->addMessage("Read Reg", QString("Ошибка : ") + m_lastErrorStr, 1);			
 		return false;
 	}
 	Sleep(200);
-//	ui.teJournal->addMessage("Read Reg", "Успешно ");
+	ui.teJournal->addMessage("Read Reg", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -1132,11 +1133,11 @@ bool SensorControl::onWriteReg()
 	qint32 tValue = tStr.toUInt(0,16);
 
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, tAddr, tValue)!=0)	{//Записать 
-	//	ui.teJournal->addMessage("onWriteReg", QString("Ошибка : ") + m_lastErrorStr, 1);
+		ui.teJournal->addMessage("onWriteReg", QString("Ошибка : ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
 	}
-//	ui.teJournal->addMessage("onWriteReg", "Успешно ");
+	ui.teJournal->addMessage("onWriteReg", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -1152,7 +1153,7 @@ void SensorControl::onTimerEvent()
 void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const unsigned char* aData)
 {
 	if ((!aData)||(!aLen)||(aLen>2048)){
-		//ui.teJournal->addMessage("slNewKadr", "Неверный формат кадра", 1);
+		ui.teJournal->addMessage("slNewKadr", "Неверный формат кадра", 1);
 		return;
 	}
 
@@ -1182,7 +1183,7 @@ void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const un
 			}
 	case 1: {//error
 		if (aData[0]!=0){
-		//	ui.teJournal->addMessage("slNewKadr", QString("Получен код ошибки %1").arg(aData[0]), 1);
+			ui.teJournal->addMessage("slNewKadr", QString("Получен код ошибки %1").arg(aData[0]), 1);
 		}
 			}
 			break;
@@ -1193,7 +1194,7 @@ void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const un
 		QString tQStr = tStr;
 		ui.teModuleMessages->moveCursor (QTextCursor::End);
 		ui.teModuleMessages->insertPlainText(tQStr);
-	//	ui.teJournal->addMessage("slNewKadr", QString("Сообщени Ascii от модуля : ").arg(aLen) + tQStr);
+		ui.teJournal->addMessage("slNewKadr", QString("Сообщени Ascii от модуля : ").arg(aLen) + tQStr);
 		QApplication::processEvents();
 			}
 			break;
@@ -1203,23 +1204,23 @@ void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const un
 			unsigned short swAddr = ((unsigned short)aData[1]) + ((unsigned short)aData[2])*256;
 			if (swAddr==0){ // Flash ID
 				m_flashID =  *((quint32*)&aData[3]);				
-				//ui.teJournal->addMessage("slNewKadr", QString("Flash ID %1").arg(m_flashID));
+				ui.teJournal->addMessage("slNewKadr", QString("Flash ID %1").arg(m_flashID));
 			}
 			else if (swAddr==3){ // 
 				m_R3 = *((quint32*)&aData[3]);
-				//ui.teJournal->addMessage("slNewKadr", QString("R3 = %1").arg(m_R3));
+				ui.teJournal->addMessage("slNewKadr", QString("R3 = %1").arg(m_R3));
 			}
 			else if (swAddr==2){ // len
 				m_inputLength = *((quint32*)&aData[3]);	
-				//ui.teJournal->addMessage("slNewKadr", QString("R2 inputLength = %1").arg(m_inputLength));
+				ui.teJournal->addMessage("slNewKadr", QString("R2 inputLength = %1").arg(m_inputLength));
 			}
 			else if (swAddr==4){
 				m_startAddr =  *((quint32*)&aData[3]);	
-				//ui.teJournal->addMessage("slNewKadr", QString("Start Address = %1\n").arg(m_startAddr));
+				ui.teJournal->addMessage("slNewKadr", QString("Start Address = %1\n").arg(m_startAddr));
 			}
 			else if (swAddr==0x1A){
 				m_temperature =  *((quint32*)&aData[3]);
-				//ui.teJournal->addMessage("slNewKadr", QString("Temperature = %1\n").arg(m_temperature));
+				ui.teJournal->addMessage("slNewKadr", QString("Temperature = %1\n").arg(m_temperature));
 			}
 
 			QString tStr = ui.leAddrRd->text();
@@ -1243,11 +1244,11 @@ void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const un
 				delete m_inputFile;
 				m_inputFile = 0;
 				if (m_fileType==FILE_RBF) {			
-					//ui.teJournal->addMessage("slNewKadr", "Чтение Flash завершено");
+					ui.teJournal->addMessage("slNewKadr", "Чтение Flash завершено");
 					QMessageBox::information(this, "Чтение Flash завершено", "Чтение Flash завершено");
 				}
 				else if (m_fileType==FILE_RAW) {
-					//ui.teJournal->addMessage("slNewKadr", "Получен RAW");
+					ui.teJournal->addMessage("slNewKadr", "Получен RAW");
 					emit newRAWFrame(m_fileName);
 					emit sigUpdateList();
 				}
@@ -1273,19 +1274,19 @@ void SensorControl::slConnectToDevice()
 	if (ui.cbFTDIDevice->count()>0)
 		tResult = openPort(ui.cbFTDIDevice->currentIndex());
 	if (!tResult){
-		//ui.teJournal->addMessage("slConnectToDevice", "Ошибка открытия",1);
+		ui.teJournal->addMessage("slConnectToDevice", "Ошибка открытия",1);
 		QMessageBox::critical(0,"Opening error","Ошибка открытия");
 		return;
 	}
-	//ui.tabWidget->setEnabled(true);
+	ui.wView->setEnabled(true);
 	if (slGetInfo()){
-	//	ui.teJournal->addMessage("slConnectToDevice", "Соединено успешно");
+		ui.teJournal->addMessage("slConnectToDevice", "Соединено успешно");
 		ui.statusBar->showMessage("Соединено успешно");
 		QMessageBox::information(0, "Соединено успешно", "Соединено успешно");
 
 	}
 	else{
-		//ui.teJournal->addMessage("slConnectToDevice", "Ошибка соединения",1);
+		ui.teJournal->addMessage("slConnectToDevice", "Ошибка соединения",1);
 		ui.statusBar->showMessage("Ошибка соединения");
 		QMessageBox::critical(0,"Ошибка соединения","Ошибка соединения");
 	}
@@ -1299,12 +1300,12 @@ bool SensorControl::slGetInfo()
 	bool tResult = true;
 	for (unsigned char nc=0; nc < 4; ++nc){
 		if (sendPacket(PKG_TYPE_INFO, 1, REG_RD, nc)!=0)	{
-		//	ui.teJournal->addMessage("slGetInfo", "Ошибка : " + m_lastErrorStr, 1);			
+			ui.teJournal->addMessage("slGetInfo", "Ошибка : " + m_lastErrorStr, 1);			
 			tResult = false;
 			break;
 		}		
 	}	
-	//ui.teJournal->addMessage("slGetInfo", QString("Result: %1").arg(tResult), tResult ? 0 : 1);
+	ui.teJournal->addMessage("slGetInfo", QString("Result: %1").arg(tResult), tResult ? 0 : 1);
 	//ui.widget_3->setEnabled(tResult);
 	m_mtx.unlock();
 	return tResult;
