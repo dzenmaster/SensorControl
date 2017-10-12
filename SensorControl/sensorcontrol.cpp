@@ -146,6 +146,7 @@ SensorControl::SensorControl(QWidget *parent)
 	m_timer->start(1000);
 
 	fillDeviceList();	
+	slOpen();
 
 }
 
@@ -621,6 +622,45 @@ bool SensorControl::slReadStartAddress()
 	return true;
 }
 
+bool SensorControl::slEraseFlash2()//erase only first sector
+{
+	if (!m_mtx.tryLock())
+		return false;
+	m_cancel = false;
+	if(m_handle == NULL) {
+		QMessageBox::critical(this,"Порт закрыт","Необходимо открыть порт");
+		m_mtx.unlock();
+		return false;
+	}
+	if ((m_flashID<1)||(m_flashID==0xFFFF)) {  //(m_flashID!=0x16){
+		QMessageBox::critical(this,"Неверный flash ID","Неверный flash ID");
+		m_mtx.unlock();
+		return false;	
+	}
+	ui.wUpdate->setEnabled(false);
+	FT_STATUS ftStatus = FT_OK;
+	DWORD ret;	
+
+	if (m_cancel){//pushed cancel
+		m_mtx.unlock();
+		return false;
+	}
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, 0)!=0)	{ // 0  не чистим			
+		ui.teJournal->addMessage("slEraseFlash2", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}		
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0D, 0x03)!=0)	{			
+		ui.teJournal->addMessage("slEraseFlash2", QString("Ошибка 3: ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}
+	ui.teJournal->addMessage("slEraseFlash2", "Успешно ");
+	ui.wUpdate->setEnabled(true);
+	m_mtx.unlock();
+	return true;
+}
+
 bool SensorControl::slEraseFlash()
 {
 	if (!m_mtx.tryLock())
@@ -671,13 +711,66 @@ bool SensorControl::slEraseFlash()
 	return true;
 }
 
-bool SensorControl::slWriteCmdUpdateFirmware()
+
+bool SensorControl::slWriteFPACFG(unsigned char* mass)
 {
 	if (!m_mtx.tryLock())
 		return false;
 	//3.3.2 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
 	//3.3.3 записать команду WRITE_DATA SW_RG_ADDR = 0x000D RG_DATA = 0x4
 	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, 0x00)!=0) { 	
+		ui.teJournal->addMessage("slWriteFPACFG", QString("Ошибка : ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0D, 0x04)!=0) { 
+		ui.teJournal->addMessage("slWriteFPACFG", QString("Ошибка : ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}
+	
+	ui.wUpdate->setEnabled(false);
+	FT_STATUS ftStatus = FT_OK;
+	DWORD ret;
+	char buff[2048];
+
+	buff[0] = 0xA5;
+	buff[1] = 0x5A;
+	buff[2] = 0x04;
+	quint16 tLen = 21;
+	memcpy(&buff[3],&tLen,2); 
+
+//	&buff[5] 21;
+	memcpy(&buff[5],mass,21);
+
+	m_waitingThread->setWaitForPacket(PKG_TYPE_ERRORMES);	
+	Sleep(100);//костыль
+	ftStatus = FT_Write(m_handle, buff, 21+5, &ret);	
+	//Sleep(200);//костыль
+	if (ftStatus!=FT_OK) {
+		ui.teJournal->addMessage("slWriteFlash", "FT_Write error", 1);
+		QMessageBox::critical(this, "FT_Write error", "FT_Write error");			
+	}
+	int tWTime=0;
+	int tCode=-1;
+	if (waitForPacket(tWTime, tCode)==1) {			
+		ui.teJournal->addMessage("slWriteFlash", "Таймаут ожидания", 1);
+		//ui.teJournal->addMessage("slWriteFlash", QString("write error %1 len=%2 %3 %4\n").arg(tCode).arg(nWasRead).arg(ret).arg(wasRW), 1);
+		m_mtx.unlock();
+		return false;
+	}
+	ui.teJournal->addMessage("slWriteCmdUpdateFirmware", "Успешно ");
+	m_mtx.unlock();
+	return true;
+}
+
+bool SensorControl::slWriteCmdUpdateFirmware()
+{
+	if (!m_mtx.tryLock())
+		return false;
+	//3.3.2 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
+	//3.3.3 записать команду WRITE_DATA SW_RG_ADDR = 0x000D RG_DATA = 0x4
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, 0x00 + 0x10000)!=0) { 	
 		ui.teJournal->addMessage("slWriteCmdUpdateFirmware", QString("Ошибка : ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
@@ -711,6 +804,25 @@ bool SensorControl::slWriteLength()
 		return false;
 	}
 	ui.teJournal->addMessage("slWriteLength", "Успешно ");
+	m_mtx.unlock();
+	return true;
+}
+
+bool SensorControl::slWriteLength2()
+{
+	if (!m_mtx.tryLock())
+		return false;
+
+	quint32 sz = 21;
+
+	ui.teJournal->addMessage("slWriteLength2", QString("Длина FPA CFG %1").arg(sz));
+	//3.3.1 Записать общую длину в байтах SW_RG_ADDR = 0x000C RG_DATA = LENGTH
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0C, sz)!=0)	{//Записать полную длину файла		
+		ui.teJournal->addMessage("slWriteLength2", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}
+	ui.teJournal->addMessage("slWriteLength2", "Успешно ");
 	m_mtx.unlock();
 	return true;
 }
@@ -1386,6 +1498,52 @@ void SensorControl::onLoadFPACfgData()
 	}
 	g_Settings.setValue("FPACfgData", strNum);
 	//можно загружать
+	QString strNum2 = strNum.remove(' ');
+	unsigned char fpaMass[22]; 
+	QString s1;
+	for (int i = 0; i < 20; ++i) {
+		s1 = strNum2.mid(i*2,2);
+		fpaMass[i] = s1.toInt(0,16);
+	}
+	s1 = strNum2.mid(40,1);
+	fpaMass[20] = s1.toInt(0,16);
+	fpaMass[21] = 0;
+
+	//3.1
+	ui.statusBar->showMessage("Read Flash ID");
+	if (!slReadFlashID()){	
+		ui.teJournal->addMessage("onLoadFPACfgData", "ReadFlashID error", 1);
+		QMessageBox::critical(0,"ReadFlashID error","ReadFlashID error");
+		return;
+	}
+	ui.statusBar->showMessage("Erase Flash");
+	if (!slEraseFlash2()){
+		ui.teJournal->addMessage("onLoadFPACfgData", "EraseFlash2 error", 1);
+		QMessageBox::critical(0,"EraseFlash error","EraseFlash2 error");
+		return;
+	}	
+	ui.statusBar->showMessage("Write Length");
+	if (!slWriteLength2()){	
+		ui.teJournal->addMessage("onLoadFPACfgData", "WriteLength error", 1);
+		QMessageBox::critical(0,"WriteLength error","WriteLength error");
+		return;
+	}
+	ui.statusBar->showMessage("Write FPA CFG");
+	if (!slWriteFPACFG(fpaMass)){
+		ui.teJournal->addMessage("slUpdateFirmware", "Write FPA CFG error", 1);
+		QMessageBox::critical(0,"Write FPA CFG error","Write FPA CFG error");
+		return;
+	}
+	//3.3.4 посылать байты при помощи пакетной передачи. По окончанию должен верноуться ответ ОК. 
+	//ui.statusBar->showMessage("Write Flash Firmware");
+	//if (!slWriteFlash()){	
+	//	ui.teJournal->addMessage("slUpdateFirmware", "WriteFlash error", 1);
+	//	QMessageBox::critical(0,"WriteFlash error","WriteFlash error");
+	//	return;
+	//}
+	ui.teJournal->addMessage("slUpdateFirmware", "Обновлено успешно");
+	ui.statusBar->showMessage("Обновлено успешно");
+	QMessageBox::information(0, "Updated successful", "Обновлено успешно");
 
 }
 
