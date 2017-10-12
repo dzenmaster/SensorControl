@@ -135,6 +135,8 @@ private slots:
 
 	void onLoadFPACfgData();
 
+	bool onWriteRDAC();
+
 
 signals:
 	void newRAWFrame(const QString&);

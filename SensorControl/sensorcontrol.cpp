@@ -140,6 +140,8 @@ SensorControl::SensorControl(QWidget *parent)
 	connect(m_timer,SIGNAL(timeout()),SLOT(onTimerEvent()) );
 
 	connect(ui.pbLoadFPACfgData,SIGNAL(clicked()),SLOT(onLoadFPACfgData()) );
+
+	connect(ui.pbWriteRDAC,SIGNAL(clicked()),SLOT(onWriteRDAC()) );
 	
 	m_timer->start(1000);
 
@@ -593,7 +595,7 @@ bool SensorControl::slReadFlashID()
 	if (!m_mtx.tryLock())
 		return false;
 
-	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 0)!=0)	{
+	if (sendPacket(PKG_TYPE_RWSW, 3, REG_RD, 0xA)!=0)	{
 		m_mtx.unlock();
 		ui.teJournal->addMessage("slReadFlashID", QString("Ошибка : ") + m_lastErrorStr, 1);				
 		return false;
@@ -621,24 +623,6 @@ bool SensorControl::slReadStartAddress()
 
 bool SensorControl::slEraseFlash()
 {
-	// a5 5a 03 03 00 01 00 00
-
-	//	 0xa5 0x5a 0x3 0x7 0x0 0x1 0x0 0x0 0x16 0x0 0x0 0x0
-
-
-/*	a5 5a 03 |07 00|00|01 00|00 00 00 00| -- set start epcs addr sector 0 
-		| LEN |wr|RgAdr|data	    |	
-
-		ответ от модуля  0xa5 0x5a 0x1 0x1 0x0 0x0 (последний байт код ршибки) - 0x00 = PASS						
-
-		2.2 Записать команду 0x3 (erase sector) -> addr = 0x3
-		a5 5a 03 |07 00|00|03 00|03 00 00 00| -- erase sector (адрес сектора устанолен в п.2.1)
-		| LEN |wr|RgAdr|data	    |
-
-		ответ от модуля  0xa5 0x5a 0x1 0x1 0x0 0x0 (последний байт код ршибки) - 0x00 = PASS		 
-
-		2.3 проделать данную операцию для остальных секторов sector 1 = 1*0x010000; sector 2 = 2*0x010000; sector 12 = 12*0x010000 (см п.2.1)
-*/
 	if (!m_mtx.tryLock())
 		return false;
 	m_cancel = false;
@@ -655,17 +639,19 @@ bool SensorControl::slEraseFlash()
 	ui.wUpdate->setEnabled(false);
 	FT_STATUS ftStatus = FT_OK;
 	DWORD ret;	
-
+	//	3.2.1 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
+	//		3.2.2 записать команду ERASE SW_RG_ADDR = 0x000D RG_DATA = 0x3
+	//		3.2.3 Дождаться ответа OK
 	for (unsigned char i = 0; i < 13; ++i) {
 		if (m_cancel){//pushed cancel
 			m_mtx.unlock();
 			return false;
 		}
-		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x01, i* 0x40000 + m_startAddr)!=0)	{ //раньше 0x10000			
+		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, (i+1) * 0x10000)!=0)	{ // 0  не чистим			
 			ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
 			break;
 		}		
-		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x03)!=0)	{			
+		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0D, 0x03)!=0)	{			
 			ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 3: ") + m_lastErrorStr, 1);
 			break;
 		}	
@@ -673,12 +659,12 @@ bool SensorControl::slEraseFlash()
 		QApplication::processEvents();
 	}	
 	//back address
-	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x01, m_startAddr)!=0)	{	
+/*	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, m_startAddr)!=0)	{	
 		ui.teJournal->addMessage("slEraseFlash", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
 		ui.wUpdate->setEnabled(true);
 		m_mtx.unlock();
 		return false;
-	}
+	}*/
 	ui.teJournal->addMessage("slEraseFlash", "Успешно ");
 	ui.wUpdate->setEnabled(true);
 	m_mtx.unlock();
@@ -689,7 +675,14 @@ bool SensorControl::slWriteCmdUpdateFirmware()
 {
 	if (!m_mtx.tryLock())
 		return false;
-	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x03, 0x04)!=0) { // 4. Записать в регистр команду Update Firmware 0x4  -> addr=0x3 (Дождаться пакета OK)		
+	//3.3.2 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
+	//3.3.3 записать команду WRITE_DATA SW_RG_ADDR = 0x000D RG_DATA = 0x4
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, 0x00)!=0) { 	
+		ui.teJournal->addMessage("slWriteCmdUpdateFirmware", QString("Ошибка : ") + m_lastErrorStr, 1);
+		m_mtx.unlock();
+		return false;
+	}
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0D, 0x04)!=0) { 
 		ui.teJournal->addMessage("slWriteCmdUpdateFirmware", QString("Ошибка : ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
@@ -711,7 +704,8 @@ bool SensorControl::slWriteLength()
 		sz = fi.size();
 	}
 	ui.teJournal->addMessage("slWriteLength", QString("Длина файла %1").arg(sz));
-	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x02, sz)!=0)	{//Записать полную длину файла		
+	//3.3.1 Записать общую длину в байтах SW_RG_ADDR = 0x000C RG_DATA = LENGTH
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0C, sz)!=0)	{//Записать полную длину файла		
 		ui.teJournal->addMessage("slWriteLength", QString("Ошибка возврата адреса 1: ") + m_lastErrorStr, 1);
 		m_mtx.unlock();
 		return false;
@@ -773,17 +767,36 @@ void SensorControl::slReadFlash()
 	m_mtx.unlock();
 }
 
+/*
+3. Запись значений FPA_CFG и ОСС в Parameter Flash. Размер сектора -> 010000h (т.е сектор 0 -> 000000h-00FFFFh; 1-> 010000h-01FFFFh...).
+   FPA_CFG предполагается хранить в секторе 0; OCC data с 1 (конец зависит от размера файла)
+
+	Последовательность записи во флеш:
+3.1 Вычитать FLASH ID SW_RG_ADDR = 0x000A
+
+3.2 Выполнить ERASE для каждого сектора:
+   3.2.1 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
+   3.2.2 записать команду ERASE SW_RG_ADDR = 0x000D RG_DATA = 0x3
+   3.2.3 Дождаться ответа OK
+
+3.3 Запись данных во флеш
+   3.3.1 Записать общую длину в байтах SW_RG_ADDR = 0x000C RG_DATA = LENGTH
+   3.3.2 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
+   3.3.3 записать команду WRITE_DATA SW_RG_ADDR = 0x000D RG_DATA = 0x4
+   3.3.4 посылать байты при помощи пакетной передачи. По окончанию должен верноуться ответ ОК. 
+*/
 
 void SensorControl::slUpdateFirmware()
 {	
 	//	m_cutLength = -1;
 	if ( (m_fileName!=ui.lePathToRBF->text())||(!QFile::exists(m_fileName)) ) {
-		if (!slBrowseRBF()){
-			ui.teJournal->addMessage("slUpdateFirmware", "Ошибка открытия RBF", 1);
-			QMessageBox::critical(0,"Open RBF error","Open RBF  error");
+		if (!slBrowseRBF()) {
+			ui.teJournal->addMessage("slUpdateFirmware", "Ошибка открытия DAT/OCC", 1);
+			QMessageBox::critical(0,"Open DAT/OCC error","Open DAT/OCC error");
 			return;
 		}
 	}
+	//3.1
 	ui.statusBar->showMessage("Read Flash ID");
 	if (!slReadFlashID()){	
 		ui.teJournal->addMessage("slUpdateFirmware", "ReadFlashID error", 1);
@@ -791,18 +804,19 @@ void SensorControl::slUpdateFirmware()
 		return;
 	}
 	//cbFileType
-	ui.statusBar->showMessage("Read Start Address");
-	if (!slReadStartAddress()){	
-		ui.teJournal->addMessage("slUpdateFirmware", "Ошибка чтения стартового адреса", 1);
-		QMessageBox::critical(0,"Read Start Address error","Read Start Address error");
-		return;
-	}
+	//ui.statusBar->showMessage("Read Start Address");
+	//if (!slReadStartAddress()){	
+	//	ui.teJournal->addMessage("slUpdateFirmware", "Ошибка чтения стартового адреса", 1);
+	//	QMessageBox::critical(0,"Read Start Address error","Read Start Address error");
+	//	return;
+	//}
 	ui.statusBar->showMessage("Erase Flash");
 	if (!slEraseFlash()){
 		ui.teJournal->addMessage("slUpdateFirmware", "EraseFlash error", 1);
 		QMessageBox::critical(0,"EraseFlash error","EraseFlash error");
 		return;
 	}
+	 //  3.3.1 Записать общую длину в байтах SW_RG_ADDR = 0x000C RG_DATA = LENGTH
 	ui.statusBar->showMessage("Write Length");
 	if (!slWriteLength()){	
 		ui.teJournal->addMessage("slUpdateFirmware", "WriteLength error", 1);
@@ -815,6 +829,7 @@ void SensorControl::slUpdateFirmware()
 		QMessageBox::critical(0,"WriteCmdUpdateFirmware error","WriteCmdUpdateFirmware error");
 		return;
 	}
+	//3.3.4 посылать байты при помощи пакетной передачи. По окончанию должен верноуться ответ ОК. 
 	ui.statusBar->showMessage("Write Flash Firmware");
 	if (!slWriteFlash()){	
 		ui.teJournal->addMessage("slUpdateFirmware", "WriteFlash error", 1);
@@ -1208,7 +1223,7 @@ void SensorControl::slNewKadr(unsigned char aType, unsigned short aLen, const un
 		//0xa5 0x5a 0x3 0x7 0x0 0x1 0x0 0x0 0x16 0x0 0x0 0x0
 		if ((aLen==7)&&(aData[0]==1)) {			
 			unsigned short swAddr = ((unsigned short)aData[1]) + ((unsigned short)aData[2])*256;
-			if (swAddr==0){ // Flash ID
+			if (swAddr==0xA){ // Flash ID
 				m_flashID =  *((quint32*)&aData[3]);				
 				ui.teJournal->addMessage("slNewKadr", QString("Flash ID %1").arg(m_flashID));
 			}
@@ -1372,4 +1387,66 @@ void SensorControl::onLoadFPACfgData()
 	g_Settings.setValue("FPACfgData", strNum);
 	//можно загружать
 
+}
+
+bool SensorControl::onWriteRDAC()
+{
+	if (!m_mtx.tryLock())
+		return false;
+
+
+	//1.1 Записать адрес устройства на шине I2C  -> SW_RG_ADDR = 0x1D ; RG_DATA = 0x18
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1D, 0x18)!=0)	{//Записать полную длину файла	
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать адрес устройства на шине I2C  -> SW_RG_ADDR = 0x1D ; RG_DATA = 0x18"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	//1.2 Записать адрес регистра устройства I2C -> SW_RG_ADDR = 0x1E ; RG_DATA = 0x00
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1E, 0x00)!=0)	{//Записать полную длину файла	
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать адрес регистра устройства I2C -> SW_RG_ADDR = 0x1E ; RG_DATA = 0x00"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	unsigned vsk = ui.sbRDACVSK->value();
+	//1.3 Записать значение регистра 		    -> SW_RG_ADDR = 0x1F ; RG_DATA = VALUE
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1F, vsk)!=0)	{//Записать полную длину файла	
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать значение регистра -> SW_RG_ADDR = 0x1F ; RG_DATA = VALUE"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	
+	//2.1 Записать адрес устройства на шине I2C  -> SW_RG_ADDR = 0x1D ; RG_DATA = 0x4E
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1D, 0x4E)!=0)	{//Записать полную длину файла	
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать адресс устройства на шине I2C -> SW_RG_ADDR = 0x1D ; RG_DATA = 0x4E"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	//2.2 Записать адрес регистра устройства I2C -> SW_RG_ADDR = 0x1E ; RG_DATA = 0x00
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1E, 0x00)!=0)	{//Записать полную длину файла	
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать адрес регистра устройства I2C -> SW_RG_ADDR = 0x1E ; RG_DATA = 0x00"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	unsigned veb = ui.sbRDACVEB->value();
+	//2.3 Записать значение регистра 		    -> SW_RG_ADDR = 0x1F ; RG_DATA = VALUE
+	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x1F, veb)!=0)	{
+		m_mtx.unlock();
+		ui.teJournal->addMessage("onWriteRDAC", QString("Ошибка : Записать значение регистра -> SW_RG_ADDR = 0x1F ; RG_DATA = VALUE"), 1);				
+		return false;
+	}
+	Sleep(16);
+
+	ui.teJournal->addMessage("onWriteRDAC", "Успешно ");
+	m_mtx.unlock();
+	return true;
 }

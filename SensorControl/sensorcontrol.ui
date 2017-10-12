@@ -273,12 +273,21 @@
         <number>0</number>
        </property>
        <item row="0" column="1">
-        <widget class="QSpinBox" name="spinBox_2">
+        <widget class="QSpinBox" name="sbRDACVSK">
          <property name="minimumSize">
           <size>
            <width>60</width>
            <height>0</height>
           </size>
+         </property>
+         <property name="prefix">
+          <string>0x</string>
+         </property>
+         <property name="maximum">
+          <number>255</number>
+         </property>
+         <property name="displayIntegerBase">
+          <number>16</number>
          </property>
         </widget>
        </item>
@@ -290,7 +299,7 @@
         </widget>
        </item>
        <item row="0" column="2" rowspan="2">
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="pbWriteRDAC">
          <property name="text">
           <string>Записать</string>
          </property>
@@ -304,12 +313,21 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QSpinBox" name="spinBox_3">
+        <widget class="QSpinBox" name="sbRDACVEB">
          <property name="minimumSize">
           <size>
            <width>60</width>
            <height>0</height>
           </size>
+         </property>
+         <property name="prefix">
+          <string>0x</string>
+         </property>
+         <property name="maximum">
+          <number>255</number>
+         </property>
+         <property name="displayIntegerBase">
+          <number>16</number>
          </property>
         </widget>
        </item>
@@ -555,7 +573,7 @@ background-color: grey;
           <item>
            <widget class="QWidget" name="widget_9" native="true">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
@@ -585,6 +603,15 @@ background-color: grey;
                 </sizepolicy>
                </property>
                <layout class="QFormLayout" name="formLayout_3">
+                <property name="fieldGrowthPolicy">
+                 <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                </property>
+                <property name="labelAlignment">
+                 <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+                </property>
+                <property name="formAlignment">
+                 <set>Qt::AlignJustify|Qt::AlignTop</set>
+                </property>
                 <property name="horizontalSpacing">
                  <number>6</number>
                 </property>
@@ -592,7 +619,7 @@ background-color: grey;
                  <number>2</number>
                 </property>
                 <property name="leftMargin">
-                 <number>2</number>
+                 <number>0</number>
                 </property>
                 <property name="topMargin">
                  <number>2</number>
@@ -629,6 +656,9 @@ background-color: grey;
                     <width>0</width>
                     <height>0</height>
                    </size>
+                  </property>
+                  <property name="frame">
+                   <bool>true</bool>
                   </property>
                   <item>
                    <property name="text">
@@ -680,6 +710,9 @@ background-color: grey;
                   </property>
                   <property name="text">
                    <string>Получить фрейм</string>
+                  </property>
+                  <property name="flat">
+                   <bool>false</bool>
                   </property>
                  </widget>
                 </item>
