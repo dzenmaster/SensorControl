@@ -622,46 +622,7 @@ bool SensorControl::slReadStartAddress()
 	return true;
 }
 
-bool SensorControl::slEraseFlash2()//erase only first sector
-{
-	if (!m_mtx.tryLock())
-		return false;
-	m_cancel = false;
-	if(m_handle == NULL) {
-		QMessageBox::critical(this,"Порт закрыт","Необходимо открыть порт");
-		m_mtx.unlock();
-		return false;
-	}
-	if ((m_flashID<1)||(m_flashID==0xFFFF)) {  //(m_flashID!=0x16){
-		QMessageBox::critical(this,"Неверный flash ID","Неверный flash ID");
-		m_mtx.unlock();
-		return false;	
-	}
-	ui.wUpdate->setEnabled(false);
-	FT_STATUS ftStatus = FT_OK;
-	DWORD ret;	
-
-	if (m_cancel){//pushed cancel
-		m_mtx.unlock();
-		return false;
-	}
-	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, 0)!=0)	{ // 0  не чистим			
-		ui.teJournal->addMessage("slEraseFlash2", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
-		m_mtx.unlock();
-		return false;
-	}		
-	if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0D, 0x03)!=0)	{			
-		ui.teJournal->addMessage("slEraseFlash2", QString("Ошибка 3: ") + m_lastErrorStr, 1);
-		m_mtx.unlock();
-		return false;
-	}
-	ui.teJournal->addMessage("slEraseFlash2", "Успешно ");
-	ui.wUpdate->setEnabled(true);
-	m_mtx.unlock();
-	return true;
-}
-
-bool SensorControl::slEraseFlash()
+bool SensorControl::slEraseFlash(int start, int cnt)
 {
 	if (!m_mtx.tryLock())
 		return false;
@@ -682,12 +643,12 @@ bool SensorControl::slEraseFlash()
 	//	3.2.1 записать в регистр начальный адрес сектора SW_RG_ADDR = 0x000B RG_DATA = START_SECTOR_ADDR
 	//		3.2.2 записать команду ERASE SW_RG_ADDR = 0x000D RG_DATA = 0x3
 	//		3.2.3 Дождаться ответа OK
-	for (unsigned char i = 0; i < 13; ++i) {
+	for (unsigned char i = start; i < start+cnt; ++i) {
 		if (m_cancel){//pushed cancel
 			m_mtx.unlock();
 			return false;
 		}
-		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, (i+1) * 0x10000)!=0)	{ // 0  не чистим			
+		if (sendPacket(PKG_TYPE_RWSW, 7, REG_WR, 0x0B, i * 0x10000)!=0)	{ // 0  не чистим			
 			ui.teJournal->addMessage("slEraseFlash", QString("Ошибка 1 : ") + m_lastErrorStr, 1);
 			break;
 		}		
@@ -808,7 +769,7 @@ bool SensorControl::slWriteLength()
 	return true;
 }
 
-bool SensorControl::slWriteLength2()
+bool SensorControl::slWriteLength21()
 {
 	if (!m_mtx.tryLock())
 		return false;
@@ -923,7 +884,7 @@ void SensorControl::slUpdateFirmware()
 	//	return;
 	//}
 	ui.statusBar->showMessage("Erase Flash");
-	if (!slEraseFlash()){
+	if (!slEraseFlash(1, 13)) { //need to get from size of file
 		ui.teJournal->addMessage("slUpdateFirmware", "EraseFlash error", 1);
 		QMessageBox::critical(0,"EraseFlash error","EraseFlash error");
 		return;
@@ -1517,13 +1478,13 @@ void SensorControl::onLoadFPACfgData()
 		return;
 	}
 	ui.statusBar->showMessage("Erase Flash");
-	if (!slEraseFlash2()){
+	if (!slEraseFlash(0,1)){
 		ui.teJournal->addMessage("onLoadFPACfgData", "EraseFlash2 error", 1);
 		QMessageBox::critical(0,"EraseFlash error","EraseFlash2 error");
 		return;
 	}	
 	ui.statusBar->showMessage("Write Length");
-	if (!slWriteLength2()){	
+	if (!slWriteLength21()){	
 		ui.teJournal->addMessage("onLoadFPACfgData", "WriteLength error", 1);
 		QMessageBox::critical(0,"WriteLength error","WriteLength error");
 		return;
@@ -1544,7 +1505,6 @@ void SensorControl::onLoadFPACfgData()
 	ui.teJournal->addMessage("slUpdateFirmware", "Обновлено успешно");
 	ui.statusBar->showMessage("Обновлено успешно");
 	QMessageBox::information(0, "Updated successful", "Обновлено успешно");
-
 }
 
 bool SensorControl::onWriteRDAC()

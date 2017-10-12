@@ -105,11 +105,10 @@ private slots:
 	bool slBrowseRBF();
 	bool slWriteFlash();
 	bool slReadFlashID();
-	bool slReadStartAddress();
-	bool slEraseFlash2();
-	bool slEraseFlash();
+	bool slReadStartAddress();	
+	bool slEraseFlash(int start=0, int cnt=13);
 	bool slWriteLength();
-	bool slWriteLength2();
+	bool slWriteLength21();
 	bool slWriteFPACFG(unsigned char*);
 	bool slWriteCmdUpdateFirmware();
 	void slReadFlash();
