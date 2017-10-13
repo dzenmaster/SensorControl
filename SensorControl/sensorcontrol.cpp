@@ -31,6 +31,7 @@ QString g_imodes[]=
 	"mono8"
 };
 
+//version of this application
 bool getVersionInfo(unsigned short* pwMSHW, unsigned short* pwMSLW, unsigned short* pwLSHW, unsigned short* pwLSLW)
 {	
 	if ((!pwMSHW)||(!pwMSLW)||(!pwLSHW)||(!pwLSLW))
@@ -43,7 +44,7 @@ bool getVersionInfo(unsigned short* pwMSHW, unsigned short* pwMSLW, unsigned sho
 	if(bRet) {
 		VS_FIXEDFILEINFO *pFixedFileInfo; 
 		UINT uLen = 0;                   
-		QString dsl = "\\";
+//		QString dsl = "\\";
 		bRet = VerQueryValueW((const LPVOID)lpFixedFileInf,	L"\\", (LPVOID *) (&pFixedFileInfo), &uLen);
 		if(bRet) {
 			*pwMSHW = HIWORD (pFixedFileInfo->dwFileVersionMS);
@@ -147,7 +148,6 @@ SensorControl::SensorControl(QWidget *parent)
 
 	fillDeviceList();	
 	slOpen();
-
 }
 
 SensorControl::~SensorControl()
@@ -408,7 +408,7 @@ bool SensorControl::slWriteFlash()
 	ui.wUpdate->setEnabled(false);
 	FT_STATUS ftStatus = FT_OK;
 	DWORD ret;
-	char buff[2048];
+	unsigned char buff[2048];
 
 	QFileInfo fi(fileName);
 	qint64 szFile = fi.size();
@@ -439,7 +439,7 @@ bool SensorControl::slWriteFlash()
 			tSuccsess = false;
 			break;
 		}
-		qint64 nWasRead = f1.read(&buff[5], 1024);			
+		qint64 nWasRead = f1.read((char*)&buff[5], 1024);			
 		if (nWasRead < 1)
 			break;
 		wasRW+=nWasRead;	
@@ -693,7 +693,7 @@ bool SensorControl::slWriteFPACFG(unsigned char* mass)
 	ui.wUpdate->setEnabled(false);
 	FT_STATUS ftStatus = FT_OK;
 	DWORD ret;
-	char buff[2048];
+	unsigned char buff[2048];
 
 	buff[0] = 0xA5;
 	buff[1] = 0x5A;
