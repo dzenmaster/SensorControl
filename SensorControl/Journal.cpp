@@ -6,6 +6,7 @@
 #include <QTextCodec>
 #include <QTime>
 #include <QKeyEvent>
+#include <QMessageBox>
 #include "Journal.h"
 
 extern QString LOGPath;
@@ -20,9 +21,10 @@ CJournal::CJournal(QWidget *parent)
 	QTime tTime = QTime::currentTime();
 	QDate tDate = QDate::currentDate();  
 	m_logFile = new QFile(LOGPath + tDate.toString("dd-MM-yyyy_") + tTime.toString("hh'h'mm'm'ss's'")+".log"); 
+	
+
 
     m_codec = QTextCodec::codecForName("UTF-8");
-
 
 	QTextDocument *	 tDoc = document();
 	if (tDoc) {
@@ -30,6 +32,13 @@ CJournal::CJournal(QWidget *parent)
 	}
 	connect(this,SIGNAL(newData(QString, QString, bool )),SLOT(safeAddMessage(QString, QString, bool)) );
 	m_mtx.unlock();
+
+	if (!m_logFile->open( QIODevice::Text | QIODevice::Append))
+		QMessageBox::critical(0,"write log","can't create log file");
+
+	m_logFile->write(m_codec->fromUnicode("Start\n"));
+	m_logFile->close();
+
 	addMessage("", "Программа Sensor Control запущена"); 
 	clearLogs();
 }

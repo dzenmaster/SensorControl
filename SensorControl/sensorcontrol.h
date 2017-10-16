@@ -91,6 +91,7 @@ private:
 	bool setRbfFileName(const QString&);
 //	void toLog(const QString& logStr);
 	void setDebugMode(bool);
+	bool convertOccFile();
 
 private slots:
 	void updateFramesList();

@@ -367,6 +367,13 @@
         <widget class="QComboBox" name="cbFTDIDevice"/>
        </item>
        <item>
+        <widget class="QPushButton" name="pbConnectToDevice">
+         <property name="text">
+          <string>Connect</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QCheckBox" name="cbDebugMode">
          <property name="text">
           <string>Режим отладки</string>

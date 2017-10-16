@@ -101,6 +101,7 @@ SensorControl::SensorControl(QWidget *parent)
 	m_buff[1]=0x5A;
 	memset(&m_buff[2], 0, 2046);
 
+	connect(ui.pbConnectToDevice, SIGNAL(clicked()), SLOT(slConnectToDevice()));
 	connect(ui.cbShowTerminal, SIGNAL(toggled(bool)), SLOT(slShowTerminal(bool)));	
 	connect(ui.pbSend, SIGNAL(clicked()), SLOT(slSend()));
 	connect(ui.pbOpen, SIGNAL(clicked()), SLOT(slOpen()));
@@ -147,7 +148,7 @@ SensorControl::SensorControl(QWidget *parent)
 	m_timer->start(1000);
 
 	fillDeviceList();	
-	slOpen();
+//	slOpen();
 }
 
 SensorControl::~SensorControl()
@@ -286,8 +287,17 @@ void SensorControl::slSend()
 
 void SensorControl::slOpen()
 {
-	if (ui.cbFTDIDevice->count()>0)
-		openPort(ui.cbFTDIDevice->currentIndex());
+/*	int tCnt = ui.cbFTDIDevice->count();
+	if (tCnt > 0){
+		int numToOpen = 0;
+		if (tCnt>1){
+			QString firstItem = ui.cbFTDIDevice->itemText(0);
+			if (firstItem.contains("blaster", Qt::CaseInsensitive))
+				numToOpen = 1;
+		}
+		openPort(numToOpen);//ui.cbFTDIDevice->currentIndex());
+	}*/
+	openPort(ui.cbFTDIDevice->currentIndex());
 }
 
 void SensorControl::slClose()
@@ -397,7 +407,7 @@ bool SensorControl::slWriteFlash()
 		m_mtx.unlock();
 		return false;	
 	}
-	QString fileName = ui.lePathToRBF->text();
+	QString fileName = ui.lePathToRBF->text() + "~";
 	if (!QFile::exists(fileName)) {
 		ui.teJournal->addMessage("slWriteFlash", QString("Файл %1 не существует").arg(fileName), 1);
 		QMessageBox::critical(this, "Файл не существует", "no file");
@@ -752,7 +762,7 @@ bool SensorControl::slWriteLength()
 		return false;
 
 	quint32 sz = 0;
-	QString fileName = ui.lePathToRBF->text();
+	QString fileName = ui.lePathToRBF->text() + "~";
 	if (QFile::exists(fileName)) {
 		QFileInfo fi(fileName);
 		sz = fi.size();
@@ -768,6 +778,8 @@ bool SensorControl::slWriteLength()
 	m_mtx.unlock();
 	return true;
 }
+
+
 
 bool SensorControl::slWriteLength21()
 {
@@ -840,6 +852,27 @@ void SensorControl::slReadFlash()
 	m_mtx.unlock();
 }
 
+bool SensorControl::convertOccFile()
+{
+	QFile file(ui.lePathToRBF->text());
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+		return false;
+
+	QFile fOut(ui.lePathToRBF->text() + "~");
+	if (!fOut.open(QIODevice::WriteOnly)) {
+		file.close();
+		return false;
+	}
+
+	while (!file.atEnd()) {
+		QByteArray line = file.readLine();
+		QString s1(line);
+		quint16 n1 =  s1.toUInt();
+		fOut.write((char*)&n1, 2);
+	}
+	file.close();
+	return true;
+}
 /*
 3. Запись значений FPA_CFG и ОСС в Parameter Flash. Размер сектора -> 010000h (т.е сектор 0 -> 000000h-00FFFFh; 1-> 010000h-01FFFFh...).
    FPA_CFG предполагается хранить в секторе 0; OCC data с 1 (конец зависит от размера файла)
@@ -868,7 +901,7 @@ void SensorControl::slUpdateFirmware()
 			QMessageBox::critical(0,"Open DAT/OCC error","Open DAT/OCC error");
 			return;
 		}
-	}
+	}	
 	//3.1
 	ui.statusBar->showMessage("Read Flash ID");
 	if (!slReadFlashID()){	
@@ -887,6 +920,12 @@ void SensorControl::slUpdateFirmware()
 	if (!slEraseFlash(1, 13)) { //need to get from size of file
 		ui.teJournal->addMessage("slUpdateFirmware", "EraseFlash error", 1);
 		QMessageBox::critical(0,"EraseFlash error","EraseFlash error");
+		return;
+	}
+	if (!convertOccFile())
+	{
+		ui.teJournal->addMessage("convertOccFile", "convertOccFile error", 1);
+		QMessageBox::critical(0,"convertOccFile error","convertOccFile error");
 		return;
 	}
 	 //  3.3.1 Записать общую длину в байтах SW_RG_ADDR = 0x000C RG_DATA = LENGTH
@@ -1380,9 +1419,9 @@ void SensorControl::slConnectToDevice()
 
 	}
 	else{
-		ui.teJournal->addMessage("slConnectToDevice", "Ошибка соединения",1);
-		ui.statusBar->showMessage("Ошибка соединения");
-		QMessageBox::critical(0,"Ошибка соединения","Ошибка соединения");
+		ui.teJournal->addMessage("slConnectToDevice", "Ошибка slGetInfo",1);
+		ui.statusBar->showMessage("Ошибка slGetInfo");
+		QMessageBox::critical(0,"Ошибка соединения","Ошибка slGetInfo");
 	}
 }
 
