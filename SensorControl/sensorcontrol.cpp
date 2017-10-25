@@ -727,10 +727,12 @@ bool SensorControl::slWriteFPACFG(unsigned char* mass)
 	if (waitForPacket(tWTime, tCode)==1) {			
 		ui.teJournal->addMessage("slWriteFlash", "Таймаут ожидания", 1);
 		//ui.teJournal->addMessage("slWriteFlash", QString("write error %1 len=%2 %3 %4\n").arg(tCode).arg(nWasRead).arg(ret).arg(wasRW), 1);
-		m_mtx.unlock();
+		ui.wUpdate->setEnabled(true);
+		m_mtx.unlock();		
 		return false;
 	}
 	ui.teJournal->addMessage("slWriteCmdUpdateFirmware", "Успешно ");
+	ui.wUpdate->setEnabled(true);
 	m_mtx.unlock();
 	return true;
 }
